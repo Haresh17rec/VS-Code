@@ -1,0 +1,26 @@
+STRATEGIC CHECKERS AI — UI VALIDATION
+
+Final UI checks completed after adding the project home, rules page, AI explanation page and in-game help.
+
+AUTOMATED GAME / LOGIC REGRESSION
+- 49 / 49 tests passed.
+- 300 seeded stress games.
+- 20,666 simulated plies.
+- 5,715 captures.
+- 956 promotions.
+- Strict human/AI alternation retained.
+- Forced multi-jump remains exactly one turn.
+- Worker/fallback/undo/new-game race handling retained.
+
+BROWSER UI SMOKE CHECK
+- Project home opens first.
+- Developer names and register numbers are visible.
+- Rules page opens and returns correctly.
+- AI explanation page opens and returns correctly.
+- Play button opens the game.
+- Board renders all 64 squares.
+- In-game Rules / help modal opens and closes correctly.
+- Desktop and 390px mobile layouts show no horizontal overflow.
+- No JavaScript page errors observed in the UI smoke check.
+
+The production game remains fully self-contained in index.html with no external script or style dependencies.

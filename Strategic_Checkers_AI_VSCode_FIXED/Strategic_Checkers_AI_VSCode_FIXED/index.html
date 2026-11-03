@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Strategic Checkers AI — VS Code Edition</title>
+<style>
+:root{
+  --bg:#0b0f14;--panel:#111821;--panel2:#17212c;--line:#273444;--text:#edf4ff;--muted:#9eb0c5;
+  --accent:#55c2ff;--human:#ed5c66;--ai:#212a35;--light:#e7d7b9;--dark:#75533f;--gold:#f5c451;
+  --good:#5ee08a;--warn:#ffbd59;--bad:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+body{min-height:100vh}
+button,select{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.55}
+.app{max-width:1450px;margin:0 auto;padding:18px}
+.topbar{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+.brand h1{margin:0;font-size:clamp(22px,3vw,34px);letter-spacing:.2px}
+.brand p{margin:4px 0 0;color:#8fcfff;font-size:14px}
+.controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.control{display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:700}
+select,.btn{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:10px 12px;min-height:42px}
+.btn:hover:not(:disabled),select:hover{border-color:#45617b}
+.btn.primary{background:#12324a;border-color:#2b78a7}
+.status{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--panel);border-radius:13px;padding:13px 15px;margin-bottom:12px;min-height:64px}
+.status-dot{width:13px;height:13px;border-radius:50%;background:var(--human);box-shadow:0 0 0 6px rgba(237,92,102,.08);flex:0 0 auto}
+.status.ai .status-dot{background:var(--accent);box-shadow:0 0 0 6px rgba(85,194,255,.09)}
+.status.gameover .status-dot{background:var(--gold);box-shadow:0 0 0 6px rgba(245,196,81,.09)}
+.status strong{display:block;font-size:16px;margin-bottom:2px}.status span{color:var(--muted);font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(500px,1fr) minmax(330px,440px);gap:18px;align-items:start}
+.board-panel{min-width:0}
+.board-shell{background:#2a211b;border:1px solid #4e382d;border-radius:16px;padding:14px;max-width:850px;margin:0 auto}
+.coords-top{display:grid;grid-template-columns:repeat(8,1fr);padding:0 0 7px;font-size:11px;color:#e8caa5;text-align:center;font-weight:800}
+.board-wrap{position:relative;width:100%;aspect-ratio:1/1;min-width:0}
+.board{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));border:3px solid #493327;border-radius:5px;overflow:hidden;contain:layout paint size}
+.square{position:relative;border:0;padding:0;margin:0;min-width:0;min-height:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.square.light{background:var(--light)}.square.dark{background:var(--dark)}
+.square.selectable::after{content:"";position:absolute;width:18%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.28);bottom:7%;right:7%}
+.square.selected{box-shadow:inset 0 0 0 5px var(--gold);z-index:1}
+.square.target::after{content:"";position:absolute;width:26%;aspect-ratio:1;border-radius:50%;background:rgba(94,224,138,.83);box-shadow:0 0 0 5px rgba(94,224,138,.16)}
+.square.capture-target::after{background:rgba(255,107,107,.9);box-shadow:0 0 0 5px rgba(255,107,107,.18)}
+.piece{width:72%;height:72%;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:inset 0 0 0 3px rgba(255,255,255,.12),0 3px 7px rgba(0,0,0,.35);transition:transform .13s ease}
+.square:hover .piece{transform:scale(1.035)}
+.piece.human{background:linear-gradient(145deg,#fb737c,#c93d49);border:2px solid #ff9ca4}
+.piece.ai{background:linear-gradient(145deg,#364352,#161c24);border:2px solid #5a6878}
+.piece.king::before{content:"♛";color:#ffe194;font-size:clamp(16px,3.3vw,36px);text-shadow:0 1px 2px #000}
+.rank{position:absolute;left:5px;top:4px;font-size:10px;font-weight:900;color:rgba(255,255,255,.72);pointer-events:none}.light .rank{color:rgba(70,45,30,.72)}
+.file{position:absolute;right:5px;bottom:3px;font-size:10px;font-weight:900;color:rgba(255,255,255,.72);pointer-events:none}.light .file{color:rgba(70,45,30,.72)}
+.thinking-overlay{position:absolute;bottom:14px;left:0;right:0;display:none;align-items:center;justify-content:center;z-index:8;pointer-events:none}
+.thinking-overlay.show{display:flex}.thinking-pill{background:#0c1721e8;border:1px solid #2e536f;padding:11px 15px;border-radius:999px;font-weight:800;color:#bfe7ff;display:flex;gap:9px;align-items:center}
+.spinner{width:15px;height:15px;border:2px solid #4f6577;border-top-color:#75d1ff;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.sidebar{display:grid;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.eyebrow{font-size:11px;letter-spacing:1.2px;color:#55c2ff;font-weight:900;margin-bottom:5px}.card h2{font-size:17px;margin:0 0 11px}.card h3{font-size:14px;margin:12px 0 7px}
+.eval-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:7px}.eval{height:17px;background:#28313a;border-radius:99px;overflow:hidden;position:relative}.eval-human{height:100%;background:var(--human);width:50%;transition:width .2s}.eval-center{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#f5f5f5b5}.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.stat{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px;min-width:0}.stat small{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}.stat b{font-size:14px;overflow-wrap:anywhere}
+.coach-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.grade{border:1px solid #60738a;background:#1e2a37;border-radius:9px;padding:7px 10px;font-weight:900}.grade.best,.grade.brilliant{border-color:#9b76d8;color:#d5baff;background:#2a203b}.grade.great{border-color:#48b978;color:#78e7a2;background:#163528}.grade.good{border-color:#4d91c7;color:#8dd0ff;background:#163047}.grade.inaccuracy{border-color:#c49344;color:#ffd17b;background:#3a2c15}.grade.mistake,.grade.blunder{border-color:#c95a5a;color:#ff9999;background:#3a1919}.score{font-size:22px;font-weight:900}.muted{color:var(--muted);font-size:12px;line-height:1.45}.move-list{display:grid;gap:6px;max-height:240px;overflow:auto;padding-right:2px}.move-row{display:grid;grid-template-columns:30px 1fr 1fr;gap:7px;align-items:center;font-size:12px}.move-cell{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px;min-width:0;overflow-wrap:anywhere}.move-num{color:var(--muted);text-align:right}.badge-score{float:right;color:#7ee8a5;font-weight:900}.candidate{display:flex;justify-content:space-between;gap:8px;background:var(--panel2);border-radius:8px;padding:7px 9px;margin-top:5px;font-size:12px}.candidate span:last-child{color:#9fc5df}.rules{font-size:12px;color:var(--muted);line-height:1.5}.fatal{display:none;background:#451d1d;border:1px solid #a94f4f;color:#ffdada;padding:14px;border-radius:12px;margin-bottom:12px;white-space:pre-wrap}.fatal.show{display:block}
+.footer-note{color:#708399;text-align:center;font-size:11px;margin:15px 0 4px}
+@media(max-width:980px){.layout{grid-template-columns:1fr}.sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}.sidebar .history-card{grid-column:1/-1}.board-shell{max-width:760px}}
+@media(max-width:650px){.app{padding:10px}.sidebar{grid-template-columns:1fr}.board-shell{padding:8px}.mini-stats{grid-template-columns:repeat(2,1fr)}.controls{width:100%}.control{flex:1}.control select{width:100%}.btn{flex:1}.piece{width:76%;height:76%}.rank,.file{font-size:8px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.square:disabled{opacity:1;cursor:default}
+.square:focus-visible{outline:3px solid #fff;outline-offset:-5px;z-index:4}
+.square.last-move{box-shadow:inset 0 0 0 4px #e9c56b90}
+.square.ai-source{box-shadow:inset 0 0 0 5px #55c2ff}
+.mover{position:absolute;width:12.5%;height:12.5%;display:flex;align-items:center;justify-content:center;z-index:9;pointer-events:none;animation:flyMove var(--duration) ease-in-out forwards}
+@keyframes flyMove{from{transform:translate(0,0)}to{transform:translate(var(--dx),var(--dy))}}
+.history-head{color:var(--muted);margin-bottom:8px;font-size:10px}
+.status{border-left:4px solid var(--human)}.status.ai{border-left-color:var(--accent)}
+.status.gameover{border-left-color:var(--gold)}
+.controls{max-width:900px}.control{font-size:11px}
+.footer-note{color:#a7b7c8;font-size:12px;line-height:1.5}
+@media(max-width:650px){.control{min-width:140px}.thinking-pill{font-size:12px;padding:8px 10px}.topbar{gap:10px}}
+
+/* Project landing / help UI */
+.screen-hidden{display:none!important}
+.welcome-screen{min-height:100vh;padding:22px;position:relative;overflow-x:hidden;background:#0b0f14;color:var(--text)}
+.welcome-screen::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.32;background-image:linear-gradient(#1a2633 1px,transparent 1px),linear-gradient(90deg,#1a2633 1px,transparent 1px);background-size:38px 38px;mask-image:linear-gradient(to bottom,#000,transparent 88%)}
+.welcome-inner{max-width:1180px;margin:0 auto;position:relative;z-index:1}
+.welcome-nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:5px 0 20px;flex-wrap:wrap}
+.welcome-mark{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.3px}
+.welcome-logo{width:42px;height:42px;border-radius:12px;background:#17212c;border:1px solid #34485c;display:grid;place-items:center;font-size:23px;color:#f5c451;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+.welcome-project-meta{color:var(--muted);font-size:12px;line-height:1.45;text-align:right}
+.hero{background:#101720;border:1px solid #28394b;border-radius:22px;padding:clamp(24px,5vw,56px);box-shadow:0 22px 70px rgba(0,0,0,.26)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:32px;align-items:center}
+.kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid #31506a;background:#112334;color:#9edcff;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:900;letter-spacing:.7px;text-transform:uppercase}
+.hero h1{font-size:clamp(38px,7vw,72px);line-height:.98;margin:18px 0 15px;letter-spacing:-1.8px;max-width:780px}
+.hero h1 span{color:#55c2ff}
+.hero-copy{font-size:clamp(15px,2vw,19px);color:#c5d3e2;line-height:1.62;max-width:760px;margin:0}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.welcome-btn{min-height:50px;padding:12px 18px;border-radius:12px;border:1px solid #32465a;background:#17212c;color:#edf4ff;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.welcome-btn:hover{border-color:#5d87a8;transform:translateY(-1px)}
+.welcome-btn.primary{background:#145073;border-color:#2d86b4;color:#fff;box-shadow:0 9px 24px rgba(27,113,158,.22)}
+.welcome-btn.gold{background:#352c17;border-color:#81672a;color:#ffe29a}
+.hero-side{display:grid;gap:12px}
+.hero-card{background:#17212c;border:1px solid #2c3c4e;border-radius:16px;padding:16px}
+.hero-card strong{display:block;font-size:14px;margin-bottom:5px}.hero-card span{display:block;color:var(--muted);font-size:12px;line-height:1.5}
+.hero-card.ai-proof{border-color:#315c78;background:#102131}
+.hero-card.ai-proof strong{color:#9edcff}
+.developer-block{margin-top:18px;padding:17px;background:#0d131a;border:1px solid #263648;border-radius:16px}
+.developer-title{font-size:11px;color:#8fcfff;font-weight:900;letter-spacing:1.1px;text-transform:uppercase;margin-bottom:10px}
+.developer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.developer{background:#151f2a;border:1px solid #2a3a4c;border-radius:12px;padding:12px}.developer b{display:block;font-size:15px}.developer small{color:var(--muted)}
+.front-section{margin-top:18px;background:#101720;border:1px solid #27394b;border-radius:20px;padding:22px}
+.front-section h2{margin:0 0 8px;font-size:clamp(24px,3vw,34px)}.front-section .lead{margin:0;color:var(--muted);line-height:1.55}
+.ai-pipeline{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin-top:18px}
+.ai-step{background:#17212c;border:1px solid #2a3c4f;border-radius:12px;padding:12px;min-height:118px}.ai-step .num{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:#12324a;color:#92ddff;font-size:11px;font-weight:900;margin-bottom:10px}.ai-step b{font-size:12px;display:block;margin-bottom:6px}.ai-step p{font-size:11px;color:var(--muted);line-height:1.45;margin:0}
+.front-note{margin-top:14px;border-left:4px solid #55c2ff;background:#102131;border-radius:10px;padding:13px 14px;color:#cfeaff;font-size:13px;line-height:1.55}
+.front-page-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}.front-page-head h1{margin:0;font-size:clamp(30px,5vw,52px)}.front-page-head p{color:var(--muted);margin:5px 0 0;max-width:760px;line-height:1.55}
+.rules-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rule-box{background:#111a24;border:1px solid #2a3b4d;border-radius:15px;padding:16px;display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:start}.rule-icon{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#162a3a;border:1px solid #2d5873;color:#9edcff;font-weight:900}.rule-box h3{margin:1px 0 5px;font-size:15px}.rule-box p{margin:0;color:#aebed0;font-size:12px;line-height:1.55}.rule-box.important{border-color:#765a2a;background:#211c12}.rule-box.important .rule-icon{background:#332a16;border-color:#806629;color:#ffe092}
+.piece-legend{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:16px;padding:13px 14px;background:#0e151d;border:1px solid #243547;border-radius:13px}.legend-item{display:flex;align-items:center;gap:9px;color:#c7d4e1;font-size:12px}.legend-disc{width:27px;height:27px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)}.legend-disc.red{background:#d94b56}.legend-disc.black{background:#222c37;border:1px solid #536273}.legend-crown{color:#ffe194;font-size:19px}
+.front-footer{color:#75889d;text-align:center;font-size:11px;padding:20px 0 2px}
+.nav-btn{white-space:nowrap}
+.game-devline{margin-top:5px;color:#9eb0c5;font-size:11px}.game-devline b{color:#d6e5f3}
+.game-help-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.game-help-row .btn{min-height:36px;padding:8px 10px;font-size:11px}
+.rules-list{margin:8px 0 0;padding-left:18px;color:var(--muted);line-height:1.5}.rules-list li{margin:5px 0}.rules-list strong{color:#edf4ff}
+.ai-proof-mini{display:grid;gap:7px}.ai-proof-mini div{display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:start;background:#17212c;border:1px solid #28394b;border-radius:9px;padding:8px}.ai-proof-mini b{font-size:11px;display:block;margin-bottom:2px;color:#edf4ff}.ai-proof-mini span{font-size:10px;color:var(--muted);line-height:1.4}.mini-num{width:22px;height:22px;border-radius:50%;background:#12324a;display:grid!important;place-items:center;color:#8dd8ff!important;font-weight:900}
+.help-modal{position:fixed;inset:0;z-index:100;background:rgba(3,6,9,.82);display:flex;align-items:center;justify-content:center;padding:18px}.help-dialog{width:min(860px,100%);max-height:min(88vh,850px);overflow:auto;background:#101720;border:1px solid #3a5066;border-radius:20px;padding:22px;box-shadow:0 26px 90px rgba(0,0,0,.48)}.help-dialog-head{display:flex;justify-content:space-between;align-items:start;gap:14px;margin-bottom:12px}.help-dialog h2{font-size:28px;margin:0}.help-dialog .muted{font-size:13px}.close-btn{min-width:42px;min-height:42px;border-radius:10px;border:1px solid #32465a;background:#17212c;color:#fff;font-size:20px}.modal-rule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.modal-rule{background:#17212c;border:1px solid #2a3b4d;border-radius:11px;padding:12px}.modal-rule b{display:block;font-size:12px;margin-bottom:4px}.modal-rule span{font-size:11px;color:var(--muted);line-height:1.45}.modal-rule.important{border-color:#765a2a;background:#211c12}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}.ai-pipeline{grid-template-columns:repeat(3,minmax(0,1fr))}.welcome-project-meta{text-align:left}.rules-layout,.modal-rule-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.welcome-screen{padding:12px}.hero{padding:22px 18px}.hero h1{font-size:39px}.developer-grid{grid-template-columns:1fr}.ai-pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}.welcome-btn{width:100%}.hero-actions{display:grid}.front-section{padding:16px}.rule-box{grid-template-columns:34px 1fr;padding:13px}.rule-icon{width:34px;height:34px}.welcome-nav{padding-bottom:12px}}
+
+</style>
+</head>
+<body>
+
+<section id="welcomeScreen" class="welcome-screen">
+  <div class="welcome-inner">
+    <header class="welcome-nav">
+      <div class="welcome-mark"><span class="welcome-logo">♟</span><span>Strategic Checkers AI</span></div>
+      <div class="welcome-project-meta"><b>CS23533 · Foundations of Artificial Intelligence</b><br>Rajalakshmi Engineering College · 2026–2027</div>
+    </header>
+
+    <main id="welcomeHome" class="welcome-page">
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <span class="kicker">Interactive FOAI Project · Final Build</span>
+            <h1>Strategic <span>Checkers AI</span></h1>
+            <p class="hero-copy">Play authentic American / English checkers against an AI that calculates every move at runtime using Minimax, Alpha–Beta Pruning, iterative deepening and a heuristic evaluation function.</p>
+            <div class="hero-actions">
+              <button class="welcome-btn primary" id="playBtn" type="button">▶ Play the Game</button>
+              <button class="welcome-btn gold" id="openRulesBtn" type="button">☰ Rules & How to Play</button>
+              <button class="welcome-btn" id="openAiBtn" type="button">◎ How the AI Works</button>
+            </div>
+            <div class="developer-block">
+              <div class="developer-title">Game Developers</div>
+              <div class="developer-grid">
+                <div class="developer"><b>Auxin Sam</b><small>Register No. 241901012</small></div>
+                <div class="developer"><b>Haresh</b><small>Register No. 241901031</small></div>
+              </div>
+            </div>
+          </div>
+          <aside class="hero-side" aria-label="Project highlights">
+            <div class="hero-card ai-proof"><strong>This is an AI-driven game</strong><span>The black side is not scripted. For every position, the program generates legal moves, searches future replies, evaluates positions, and selects the best move it finds.</span></div>
+            <div class="hero-card"><strong>Authentic rules</strong><span>Mandatory captures, same-piece multi-jump chains, kings, promotion, win conditions and draw safeguards.</span></div>
+            <div class="hero-card"><strong>Explainable demo</strong><span>AI search depth, nodes, Alpha–Beta prunes, cache hits, evaluation, candidate moves and Move Coach feedback are visible while you play.</span></div>
+            <div class="hero-card"><strong>Offline & self-contained</strong><span>No login, backend, internet connection, package install or external game engine is required.</span></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="front-section" id="homeAiSummary">
+        <h2>What happens when the AI makes a move?</h2>
+        <p class="lead">The visible board is the interface. The intelligence is produced by the search engine inside this project.</p>
+        <div class="ai-pipeline">
+          <div class="ai-step"><span class="num">1</span><b>Read board state</b><p>The current 8 × 8 position and side to move are represented in memory.</p></div>
+          <div class="ai-step"><span class="num">2</span><b>Generate legal turns</b><p>The rules engine enforces captures, complete multi-jumps and promotion.</p></div>
+          <div class="ai-step"><span class="num">3</span><b>Search future replies</b><p>Minimax explores alternating AI and human responses.</p></div>
+          <div class="ai-step"><span class="num">4</span><b>Prune branches</b><p>Alpha–Beta skips branches that cannot change the final choice.</p></div>
+          <div class="ai-step"><span class="num">5</span><b>Evaluate positions</b><p>Material, kings, mobility, advancement, center and safety are scored.</p></div>
+          <div class="ai-step"><span class="num">6</span><b>Play best move</b><p>The best legal result found is validated and committed exactly once.</p></div>
+        </div>
+        <div class="front-note"><b>Important for the project review:</b> this is classical Artificial Intelligence, not a downloaded set of pre-made moves and not a machine-learning model. The decision is recalculated from the current board every turn.</div>
+      </section>
+    </main>
+
+    <main id="welcomeRules" class="welcome-page screen-hidden">
+      <section class="front-section">
+        <div class="front-page-head">
+          <div><h1>Rules & How to Play</h1><p>These are the exact American / English checkers rules enforced by the game engine for both the human player and the AI.</p></div>
+          <button class="welcome-btn" id="rulesBackBtn" type="button">← Project Home</button>
+        </div>
+        <div class="piece-legend"><span class="legend-item"><span class="legend-disc red"></span><b>Red = You</b> · You move first</span><span class="legend-item"><span class="legend-disc black"></span><b>Black = AI</b></span><span class="legend-item"><span class="legend-crown">♛</span><b>Crown = King</b></span></div>
+        <div class="rules-layout" style="margin-top:14px">
+          <div class="rule-box"><span class="rule-icon">1</span><div><h3>Board and turns</h3><p>The game uses an 8 × 8 board with 12 pieces per side. Only dark squares are playable. Red moves first, then turns alternate.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">2</span><div><h3>Normal movement</h3><p>A normal man moves one dark square diagonally forward into an empty square. A king may move one diagonal square in either direction.</p></div></div>
+          <div class="rule-box important"><span class="rule-icon">!</span><div><h3>Captures are mandatory</h3><p>If any capture is available, a normal non-capturing move is not allowed. The interface highlights only legal choices.</p></div></div>
+          <div class="rule-box important"><span class="rule-icon">↻</span><div><h3>Multi-jump = one complete turn</h3><p>After a jump, if the same piece can capture again, it must continue. Several jump animations can occur, but the complete chain is recorded as one move and one turn.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">5</span><div><h3>Capturing</h3><p>A man jumps diagonally forward over one adjacent opponent piece into the empty square immediately beyond it. Captured pieces are removed.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">♛</span><div><h3>Kings</h3><p>When crowned, a king can move and capture diagonally forward or backward. This project uses standard one-square/jump kings, not flying kings.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">7</span><div><h3>Promotion</h3><p>When a man reaches the far king row, it is promoted to a king. Under this implemented rule set, reaching the king row ends that capture turn.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">8</span><div><h3>Choosing captures</h3><p>If more than one legal capture chain is available, the player may choose any of the complete legal chains offered by the rules engine.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">9</span><div><h3>How to win</h3><p>You win when the opponent has no pieces remaining or has no legal move. The AI wins under the same condition.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">=</span><div><h3>Draw safeguards</h3><p>The game declares a draw after three occurrences of the same position with the same player to move, or after 80 quiet turns without a capture or man movement.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">↶</span><div><h3>Undo</h3><p>Undo restores the position before your previous human + AI round. During an unfinished capture chain, Undo cancels the uncommitted preview.</p></div></div>
+          <div class="rule-box"><span class="rule-icon">●</span><div><h3>How to move in the UI</h3><p>Select a highlighted red piece, then select a highlighted destination. Green marks a legal landing square; red marks a capture destination.</p></div></div>
+        </div>
+        <div class="hero-actions"><button class="welcome-btn primary" id="rulesPlayBtn" type="button">▶ I Understand — Play Now</button><button class="welcome-btn" id="rulesAiBtn" type="button">◎ See How AI Works</button></div>
+      </section>
+    </main>
+
+    <main id="welcomeAI" class="welcome-page screen-hidden">
+      <section class="front-section">
+        <div class="front-page-head">
+          <div><h1>How the AI Works</h1><p>This page is included so the AI implementation is clear during the project review. The game board is only the visualization; the move decision is calculated by the project code.</p></div>
+          <button class="welcome-btn" id="aiBackBtn" type="button">← Project Home</button>
+        </div>
+        <div class="ai-pipeline">
+          <div class="ai-step"><span class="num">1</span><b>State representation</b><p>Every piece and empty square is encoded as a board state.</p></div>
+          <div class="ai-step"><span class="num">2</span><b>Legal-move generator</b><p>Only rule-correct complete turns enter the search tree.</p></div>
+          <div class="ai-step"><span class="num">3</span><b>Minimax</b><p>The AI maximizes its position while assuming the human will choose strong replies.</p></div>
+          <div class="ai-step"><span class="num">4</span><b>Alpha–Beta Pruning</b><p>Unnecessary branches are cut without changing the Minimax result for the searched depth.</p></div>
+          <div class="ai-step"><span class="num">5</span><b>Heuristic</b><p>Non-terminal positions are scored using pieces, kings, mobility, advancement, center control and safety.</p></div>
+          <div class="ai-step"><span class="num">6</span><b>Search optimizations</b><p>Iterative deepening, move ordering and a transposition cache improve practical search.</p></div>
+        </div>
+        <div class="front-note"><b>Why this qualifies as AI:</b> the black move is not hard-coded. A different board state produces a different search tree. The engine reasons over possible future actions and opponent responses, then chooses a legal move based on the evaluated outcome.</div>
+        <div class="hero-actions"><button class="welcome-btn primary" id="aiPlayBtn" type="button">▶ Start the AI Demo</button><button class="welcome-btn gold" id="aiRulesBtn" type="button">☰ Read Game Rules</button></div>
+      </section>
+    </main>
+
+    <footer class="front-footer">Developed by Auxin Sam (241901012) & Haresh (241901031) · Foundations of Artificial Intelligence</footer>
+  </div>
+</section>
+
+<div class="app screen-hidden" id="app">
+  <div class="topbar">
+    <div class="brand"><h1>Strategic Checkers AI</h1><p>Final · American / English checkers · Minimax + Alpha–Beta</p><div class="game-devline">Game Developers: <b>Auxin Sam (241901012)</b> &amp; <b>Haresh (241901031)</b></div></div>
+    <div class="controls">
+      <button class="btn nav-btn" id="gameHomeBtn" type="button">⌂ Project home</button>
+      <button class="btn nav-btn" id="gameRulesBtn" type="button">? Rules / help</button>
+      <label class="control">AI difficulty
+        <select id="difficulty"><option value="easy">Easy</option><option value="medium" selected>Medium · balanced</option><option value="hard">Hard · deeper</option></select>
+      </label>
+      <label class="control">Rules
+        <select id="rules" disabled><option value="standard" selected>American / English checkers</option></select>
+      </label>
+      <label class="control">AI pace
+        <select id="pace"><option value="steady" selected>Steady · 1.5s pause</option><option value="slow">Slow · 2.5s pause</option></select>
+      </label>
+      <button class="btn" id="undoBtn" type="button">Undo turn</button>
+      <button class="btn primary" id="newBtn" type="button">New game</button>
+    </div>
+  </div>
+  <div id="fatal" class="fatal"></div>
+  <noscript><div class="fatal show">JavaScript is disabled. Enable JavaScript to play this offline game.</div></noscript>
+  <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"><div class="status-dot"></div><div><strong id="statusTitle">Your turn</strong><span id="statusText">Select a red piece.</span></div></div>
+  <div class="layout">
+    <section class="board-panel">
+      <div class="board-shell">
+        <div class="coords-top"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div>
+        <div class="board-wrap">
+          <div class="board" id="board" aria-label="Checkers board"></div>
+          <div class="thinking-overlay" id="thinking"><div class="thinking-pill"><span class="spinner"></span><span id="thinkingText">AI is thinking…</span></div></div>
+        </div>
+      </div>
+      <p class="footer-note" id="ruleNote">Captures are mandatory. A forced multi-jump chain is one complete turn.</p>
+    </section>
+    <aside class="sidebar">
+      <section class="card">
+        <div class="eyebrow">POSITION</div><h2>Strategy evaluation</h2>
+        <div class="eval-labels"><span>You</span><span>AI</span></div>
+        <div class="eval"><div class="eval-human" id="evalHuman"></div><div class="eval-center"></div></div>
+        <div class="mini-stats"><div class="stat"><small>Your pieces</small><b id="humanPieces">12</b></div><div class="stat"><small>AI pieces</small><b id="aiPieces">12</b></div><div class="stat"><small>Eval</small><b id="evalScore">0.0</b></div></div>
+      </section>
+      <section class="card">
+        <div class="eyebrow">MOVE COACH</div><h2>Your last move</h2>
+        <div id="coachEmpty" class="muted">Make a move and the AI coach will compare it with the strongest move it found.</div>
+        <div id="coachBody" style="display:none">
+          <div class="coach-main"><span id="grade" class="grade best">Best ✓</span><span><span id="moveScore" class="score">100</span><span class="muted"> / 100</span></span><b id="lastHumanMove"></b></div>
+          <p id="coachExplain" class="muted"></p>
+          <div class="mini-stats"><div class="stat"><small>Best move</small><b id="bestHumanMove">—</b></div><div class="stat"><small>Eval loss</small><b id="evalLoss">—</b></div><div class="stat"><small>Coach depth</small><b id="coachDepth">—</b></div></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="eyebrow">AI LAB</div><h2>Minimax search</h2>
+        <div class="mini-stats"><div class="stat"><small>Depth</small><b id="aiDepth">—</b></div><div class="stat"><small>Nodes</small><b id="aiNodes">—</b></div><div class="stat"><small>α–β prunes</small><b id="aiPrunes">—</b></div><div class="stat"><small>Cache hits</small><b id="aiCache">—</b></div><div class="stat"><small>Think time</small><b id="aiTime">—</b></div><div class="stat"><small>Best eval</small><b id="aiBest">—</b></div></div>
+        <p id="aiExplain" class="muted">The AI has not moved yet.</p>
+        <h3>Top candidate moves</h3><div id="candidates" class="muted">—</div>
+      </section>
+      <section class="card history-card">
+        <div class="eyebrow">GAME</div><h2>Move history</h2><div class="move-row history-head"><span>Round</span><span>You · red</span><span>AI · black</span></div>
+        <div class="move-list" id="history"><div class="muted">No moves yet.</div></div>
+      </section>
+      <section class="card">
+        <div class="eyebrow">QUICK RULES</div><h2 id="activeRules">American / English checkers</h2>
+        <div class="rules"><p id="rulesHelp">Captures are mandatory. If another capture is available after a jump, the same piece must continue. Each jump is animated separately, but the full chain is one move and one turn.</p>
+          <ul class="rules-list"><li><strong>Red = You</strong> and moves first; black is the AI.</li><li>Men move diagonally forward; kings move in both directions.</li><li>A forced capture must be taken.</li><li>Promotion on the far row creates a king and ends that capture turn.</li><li>No legal move or no pieces = loss.</li></ul>
+          <div class="game-help-row"><button class="btn" id="rulesCardBtn" type="button">Open full rules</button><button class="btn" id="aiCardBtn" type="button">How AI works</button></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="eyebrow">AI PROOF</div><h2>How the computer chooses</h2>
+        <div class="ai-proof-mini">
+          <div><span class="mini-num">1</span><span><b>Generate legal turns</b>Mandatory captures and complete chains are handled first.</span></div>
+          <div><span class="mini-num">2</span><span><b>Run Minimax search</b>The AI simulates its move, your reply and future responses.</span></div>
+          <div><span class="mini-num">3</span><span><b>Alpha–Beta + heuristic</b>It prunes irrelevant branches and scores positions.</span></div>
+          <div><span class="mini-num">4</span><span><b>Commit one best move</b>The returned move is checked again and applied exactly once.</span></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div id="rulesModal" class="help-modal screen-hidden" role="dialog" aria-modal="true" aria-labelledby="rulesModalTitle">
+  <section class="help-dialog">
+    <div class="help-dialog-head"><div><div class="eyebrow">GAME GUIDE</div><h2 id="rulesModalTitle">Rules & How to Play</h2><p class="muted">The same rules are enforced for you and for the AI.</p></div><button id="closeRulesModal" class="close-btn" type="button" aria-label="Close rules">×</button></div>
+    <div class="piece-legend"><span class="legend-item"><span class="legend-disc red"></span><b>Red = You</b></span><span class="legend-item"><span class="legend-disc black"></span><b>Black = AI</b></span><span class="legend-item"><span class="legend-crown">♛</span><b>King</b></span></div>
+    <div class="modal-rule-grid">
+      <div class="modal-rule"><b>Movement</b><span>Men move one diagonal square forward. Kings move one diagonal square in either direction.</span></div>
+      <div class="modal-rule important"><b>Mandatory capture</b><span>If a capture exists, a quiet move is illegal. The UI only offers valid choices.</span></div>
+      <div class="modal-rule important"><b>Multi-jump chains</b><span>If the same piece can jump again, it must continue. The full chain is one move and one turn.</span></div>
+      <div class="modal-rule"><b>Promotion</b><span>Reaching the opposite king row crowns the man. In this rule set, promotion ends that capture turn.</span></div>
+      <div class="modal-rule"><b>Winning</b><span>A player loses when they have no pieces or no legal moves.</span></div>
+      <div class="modal-rule"><b>Draws</b><span>Threefold repetition or 80 quiet turns triggers a draw safeguard.</span></div>
+      <div class="modal-rule"><b>UI colors</b><span>Green = legal landing. Red = legal capture destination. Gold border = selected piece.</span></div>
+      <div class="modal-rule"><b>Undo</b><span>Undo restores the previous human + AI round, or cancels an unfinished capture preview.</span></div>
+    </div>
+    <div class="front-note"><b>Remember:</b> when the AI makes two or more jumps with the same black piece, that is a compulsory capture chain inside a single AI turn — not the AI taking multiple turns.</div>
+    <div class="game-help-row"><button class="btn primary" id="modalContinueBtn" type="button">Continue playing</button><button class="btn" id="modalProjectRulesBtn" type="button">Open project rules page</button></div>
+  </section>
+</div>
+
+<script>
+(function(){
+'use strict';
+try {
+// Pure American / English checkers rules engine. A Move contains one complete turn.
+function engineFactory() {
+  const E=0, H=1, HK=2, A=-1, AK=-2;
+  const idx=(r,c)=>r*8+c, rc=i=>[Math.floor(i/8),i%8];
+  const inside=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+  const owner=p=>Math.sign(p), king=p=>Math.abs(p)===2;
+  const dirs=p=>p===H?[[-1,-1],[-1,1]]:p===A?[[1,-1],[1,1]]:[[-1,-1],[-1,1],[1,-1],[1,1]];
+  const promote=(p,r)=>p===H&&r===0?HK:p===A&&r===7?AK:p;
+  const square=i=>String.fromCharCode(97+i%8)+(8-Math.floor(i/8));
+  const moveKey=m=>m.path.join('.')+'|'+m.captures.join('.');
+  const notation=m=>m.path.map(square).join(m.captures.length?'×':'–');
+  const pathStarts=(path,prefix)=>prefix.length<=path.length&&prefix.every((n,i)=>path[i]===n);
+  function initialBoard() {
+    const b=new Int8Array(64);
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++)
+      if((r+c)%2 && (r<3||r>4)) b[idx(r,c)]=r<3?A:H;
+    return b;
+  }
+  function jumps(b,from,p) {
+    const out=[],[r,c]=rc(from);
+    for(const [dr,dc] of dirs(p)) {
+      const nr=r+2*dr,nc=c+2*dc;
+      if(!inside(nr,nc)) continue;
+      const mid=idx(r+dr,c+dc),to=idx(nr,nc);
+      if(owner(b[mid])===-owner(p)&&b[to]===E) out.push({to,mid});
+    }
+    return out;
+  }
+  function capturePaths(b,from,p,path,captures,out,rules) {
+    for(const {to,mid} of jumps(b,from,p)) {
+      const next=new Int8Array(b),np=promote(p,Math.floor(to/8));
+      next[from]=E; next[mid]=E; next[to]=np;
+      const m={path:path.concat(to),captures:captures.concat(mid)};
+      if(np!==p||!jumps(next,to,np).length) out.push(m);
+      else capturePaths(next,to,np,m.path,m.captures,out,rules);
+    }
+  }
+  function getLegalMoves(b,player,rules='standard') {
+    const captures=[];
+    for(let i=0;i<64;i++) if(owner(b[i])===player) capturePaths(b,i,b[i],[i],[],captures,rules);
+    if(captures.length) return captures;
+    const moves=[];
+    for(let i=0;i<64;i++) if(owner(b[i])===player) {
+      const [r,c]=rc(i);
+      for(const [dr,dc] of dirs(b[i])) if(inside(r+dr,c+dc)&&b[idx(r+dr,c+dc)]===E)
+        moves.push({path:[i,idx(r+dr,c+dc)],captures:[]});
+    }
+    return moves;
+  }
+  function applyMove(b,m) {
+    const next=new Int8Array(b),from=m.path[0],to=m.path[m.path.length-1],p=next[from];
+    next[from]=E;
+    for(const i of m.captures) next[i]=E;
+    next[to]=promote(p,Math.floor(to/8));
+    return next;
+  }
+  function applyPrefix(b,path) {
+    const next=new Int8Array(b);
+    if(path.length<2) return next;
+    let p=next[path[0]]; next[path[0]]=E;
+    for(let k=1;k<path.length;k++) {
+      const [r,c]=rc(path[k-1]),[nr,nc]=rc(path[k]);
+      if(Math.abs(nr-r)===2) next[idx((r+nr)/2,(c+nc)/2)]=E;
+      p=promote(p,nr);
+    }
+    next[path[path.length-1]]=p; return next;
+  }
+  function count(b,player) {
+    let men=0,kings=0;
+    for(const p of b) if(owner(p)===player) { if(king(p)) kings++; else men++; }
+    return {men,kings,total:men+kings};
+  }
+  function positionKey(b,player) { return player+':'+Array.from(b).join(','); }
+  return {E,H,HK,A,AK,idx,rc,inside,owner,king,dirs,promote,square,notation,moveKey,pathStarts,initialBoard,getLegalMoves,applyMove,applyPrefix,count,positionKey};
+}
+
+// Minimax with iterative deepening and bound-aware alpha-beta transpositions.
+function aiFactory(C) {
+  const INF=1e9, WIN=1000000, TIME={};
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  function evaluate(b,rules='standard') {
+    let score=0;
+    for(let i=0;i<64;i++) {
+      const p=b[i]; if(!p) continue;
+      const [r,c]=C.rc(i),sign=p<0?1:-1;
+      score+=sign*(C.king(p)?185:100);
+      if(!C.king(p)) score+=sign*(p<0?r:7-r)*7;
+      if(r>=2&&r<=5&&c>=2&&c<=5) score+=sign*11;
+      if(c===0||c===7) score+=sign*4;
+      if((p===C.A&&r===0)||(p===C.H&&r===7)) score+=sign*7;
+    }
+    return score+4*(C.getLegalMoves(b,C.A,rules).length-C.getLegalMoves(b,C.H,rules).length);
+  }
+  function ordered(b,player,rules) {
+    const weight=m=>{
+      const to=m.path[m.path.length-1],[r,c]=C.rc(to);
+      return m.captures.length*1000+(C.promote(b[m.path[0]],r)!==b[m.path[0]]?900:0)+(r>=2&&r<=5&&c>=2&&c<=5?50:0);
+    };
+    return C.getLegalMoves(b,player,rules).sort((a,b)=>weight(b)-weight(a));
+  }
+  function alphaBeta(b,depth,player,alpha,beta,ctx) {
+    if((ctx.stats.nodes++&31)===0 && performance.now()>=ctx.deadline) throw TIME;
+    const moves=ordered(b,player,ctx.rules);
+    if(!moves.length) return player===C.A?-WIN-depth:WIN+depth;
+    if(depth===0) return evaluate(b,ctx.rules);
+    const key=C.positionKey(b,player)+':'+depth;
+    const alpha0=alpha,beta0=beta,hit=ctx.table.get(key);
+    if(hit) {
+      ctx.stats.cache++;
+      if(hit.flag==='exact') return hit.value;
+      if(hit.flag==='lower') alpha=Math.max(alpha,hit.value);
+      else beta=Math.min(beta,hit.value);
+      if(alpha>=beta) return hit.value;
+    }
+    let value=player===C.A?-INF:INF;
+    for(const m of moves) {
+      const score=alphaBeta(C.applyMove(b,m),depth-1,-player,alpha,beta,ctx);
+      if(player===C.A) { value=Math.max(value,score); alpha=Math.max(alpha,value); }
+      else { value=Math.min(value,score); beta=Math.min(beta,value); }
+      if(alpha>=beta) { ctx.stats.prunes++; break; }
+    }
+    ctx.table.set(key,{value,flag:value<=alpha0?'upper':value>=beta0?'lower':'exact'});
+    return value;
+  }
+  function chooseMove(b,opt={}) {
+    const player=opt.player||C.A,rules=opt.rules||'standard';
+    const start=performance.now(),deadline=start+Math.max(1,opt.budgetMs||500);
+    const maxDepth=Math.max(1,Math.min(10,opt.maxDepth||5)),moves=ordered(b,player,rules);
+    const stats={nodes:0,prunes:0,cache:0};
+    if(!moves.length) return {move:null,depth:0,...stats,elapsed:0,bestScore:player===C.A?-WIN:WIN,candidates:[],allCandidates:[]};
+    // A finite legal fallback is available even if no depth completes in time.
+    let best=moves[0],bestScore=evaluate(C.applyMove(b,best),rules),depthDone=0,candidates=[];
+    for(let depth=1;depth<=maxDepth;depth++) {
+      const ctx={rules,deadline,stats,table:new Map()},round=[];
+      try {
+        // Full root windows keep candidate scores comparable for move grading.
+        for(const move of moves) round.push({move,score:alphaBeta(C.applyMove(b,move),depth-1,-player,-INF,INF,ctx)});
+      } catch(e) { if(e===TIME) break; throw e; }
+      round.sort((a,b)=>player===C.A?b.score-a.score:a.score-b.score);
+      best=round[0].move; bestScore=round[0].score; candidates=round; depthDone=depth;
+      if(Math.abs(bestScore)>=WIN) break;
+      if(performance.now()>=deadline) break;
+    }
+    const allCandidates=candidates.map(x=>({notation:C.notation(x.move),key:C.moveKey(x.move),score:x.score}));
+    return {move:best,depth:depthDone,...stats,elapsed:performance.now()-start,bestScore,candidates:allCandidates.slice(0,5),allCandidates};
+  }
+  function analyzeHuman(before,actual,opt={}) {
+    const rules=opt.rules||'standard',res=chooseMove(before,{...opt,player:C.H});
+    const candidate=res.allCandidates.find(m=>m.key===C.moveKey(actual));
+    if(!candidate) return {grade:'Not rated',cls:'good',score:null,loss:null,bestMove:C.notation(res.move),depth:res.depth,explain:'The time limit ended before a complete comparison. This move has not been graded.'};
+    const loss=Math.max(0,candidate.score-res.bestScore),forced=C.getLegalMoves(before,C.H,rules).length===1;
+    let grade,cls,score,explain;
+    if(forced||loss<=2) {grade='Best ✓';cls='best';score=100;explain=forced?'This was the only legal move.':'This matched the strongest continuation found at this search depth.';}
+    else if(loss<=18) {grade='Great !';cls='great';score=Math.round(98-loss*.7);explain='Very close to the best continuation found.';}
+    else if(loss<=45) {grade='Good';cls='good';score=Math.round(92-(loss-18)*.8);explain='Playable; the coach found a stronger continuation.';}
+    else if(loss<=90) {grade='Inaccuracy ?!';cls='inaccuracy';score=Math.round(70-(loss-45)*.45);explain='The coach found a move with a better position.';}
+    else if(loss<=180) {grade='Mistake ?';cls='mistake';score=Math.round(50-(loss-90)*.28);explain='A stronger move was available at this search depth.';}
+    else {grade='Blunder ??';cls='blunder';score=Math.max(5,Math.round(25-(loss-180)*.05));explain='The search found a large evaluation loss compared with its best move.';}
+    return {grade,cls,score:clamp(score,0,100),loss,bestMove:C.notation(res.move),depth:res.depth,explain};
+  }
+  return {evaluate,chooseMove,analyzeHuman};
+}
+
+function workerMain() {
+  const C=engineFactory(),AI=aiFactory(C);
+  self.onmessage=e=>{
+    const d=e.data;
+    try {
+      const reply=AI.chooseMove(new Int8Array(d.board),d.options);
+      let coach=null;
+      try {coach=AI.analyzeHuman(new Int8Array(d.before),d.humanMove,d.coachOptions);} catch(_) { /* Coach cannot prevent an AI reply. */ }
+      self.postMessage({id:d.id,ok:true,result:{reply,coach}});
+    } catch(err) {self.postMessage({id:d.id,ok:false,error:String(err&&err.message||err)});}
+  };
+}
+
+const C=engineFactory(), AI=aiFactory(C);
+const $=id=>document.getElementById(id), boardEl=$('board');
+
+// Project navigation is intentionally separated from the game-state controller.
+function uiShowProject(page='home') {
+  const welcome=$('welcomeScreen'),app=$('app');
+  if(welcome)welcome.classList.remove('screen-hidden');
+  if(app)app.classList.add('screen-hidden');
+  for(const [id,key] of [['welcomeHome','home'],['welcomeRules','rules'],['welcomeAI','ai']]) {
+    const el=$(id);if(el)el.classList.toggle('screen-hidden',key!==page);
+  }
+  const modal=$('rulesModal');if(modal)modal.classList.add('screen-hidden');
+  if(typeof window.scrollTo==='function')window.scrollTo(0,0);
+}
+function uiPlayGame() {
+  const welcome=$('welcomeScreen'),app=$('app'),modal=$('rulesModal');
+  if(welcome)welcome.classList.add('screen-hidden');
+  if(app)app.classList.remove('screen-hidden');
+  if(modal)modal.classList.add('screen-hidden');
+  if(typeof window.scrollTo==='function')window.scrollTo(0,0);
+}
+function uiOpenRulesModal() {const modal=$('rulesModal');if(modal)modal.classList.remove('screen-hidden');}
+function uiCloseRulesModal() {const modal=$('rulesModal');if(modal)modal.classList.add('screen-hidden');}
+function uiBind(id,event,fn){const el=$(id);if(el)el.addEventListener(event,fn);}
+
+let state, epoch=0, requestSeq=0, activeJob=null;
+const copy=value=>JSON.parse(JSON.stringify(value));
+const abortError=()=>Object.assign(new Error('Turn cancelled'),{name:'AbortError'});
+const isAI=()=>state.phase==='ai-thinking'||state.phase==='ai-moving';
+const current=job=>activeJob===job&&job.epoch===epoch&&!job.controller.signal.aborted&&!job.committed&&isAI();
+const blankStats=()=>({depth:null,nodes:null,prunes:null,cache:null,elapsed:null,bestScore:null,candidates:[]});
+function config() {
+  const difficulty=$('difficulty').value;
+  return difficulty==='hard'?{maxDepth:8,budgetMs:1300,coachDepth:5,coachMs:450}:
+    difficulty==='easy'?{maxDepth:3,budgetMs:150,coachDepth:3,coachMs:140}:
+    {maxDepth:6,budgetMs:550,coachDepth:4,coachMs:280};
+}
+function pacing() {return $('pace').value==='slow'?{delay:2500,slide:900,hold:550}:{delay:1500,slide:650,hold:350};}
+function cancelPending() {
+  epoch++;
+  const old=activeJob; activeJob=null;
+  if(old) old.controller.abort();
+}
+function waitFor(ms,signal) {
+  return new Promise((resolve,reject)=>{
+    if(signal.aborted) {reject(abortError());return;}
+    let timer;
+    const stop=()=>{clearTimeout(timer);signal.removeEventListener('abort',stop);reject(abortError());};
+    signal.addEventListener('abort',stop,{once:true});
+    timer=setTimeout(()=>{signal.removeEventListener('abort',stop);resolve();},Math.max(0,ms));
+  });
+}
+function askWorker(payload,signal,timeoutMs) {
+  return new Promise((resolve,reject)=>{
+    if(signal.aborted) {reject(abortError());return;}
+    let worker=null,url=null,timer=null,settled=false;
+    const id=++requestSeq;
+    const finish=(error,result)=>{
+      if(settled) return;
+      settled=true; clearTimeout(timer); signal.removeEventListener('abort',cancel);
+      if(worker) {worker.onmessage=null;worker.onerror=null;worker.onmessageerror=null;worker.terminate();}
+      if(url) URL.revokeObjectURL(url);
+      if(error) reject(error); else resolve(result);
+    };
+    const cancel=()=>finish(abortError());
+    try {
+      if(!window.Worker||!window.Blob||!window.URL) throw new Error('Worker unavailable');
+      const source=engineFactory.toString()+'\n'+aiFactory.toString()+'\n('+workerMain.toString()+')();';
+      url=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));
+      worker=new Worker(url);
+      worker.onmessage=e=>{
+        const d=e.data;
+        if(!d||d.id!==id) return;
+        if(d.ok&&d.result) finish(null,d.result); else finish(new Error('Search failed'));
+      };
+      worker.onerror=e=>{if(e.preventDefault)e.preventDefault();finish(new Error('Search worker failed'));};
+      worker.onmessageerror=()=>finish(new Error('Invalid search message'));
+      signal.addEventListener('abort',cancel,{once:true});
+      timer=setTimeout(()=>finish(new Error('Search timed out')),timeoutMs);
+      worker.postMessage({...payload,id});
+    } catch(error) {finish(error);}
+  });
+}
+function legalReply(result,board,rules) {
+  if(!result||!result.move||!Array.isArray(result.move.path)||!Array.isArray(result.move.captures)) return null;
+  const key=C.moveKey(result.move);
+  return C.getLegalMoves(board,C.A,rules).find(m=>C.moveKey(m)===key)||null;
+}
+async function computeTurn(job) {
+  // Reliable local AI path: avoid Blob/Web Worker restrictions in VS Code,
+  // file:// previews, and browsers with strict worker policies.
+  const signal=job.controller.signal;
+  await waitFor(0,signal); // let the browser paint the thinking indicator
+  if(!current(job)) throw abortError();
+
+  let reply;
+  try {
+    reply=AI.chooseMove(job.board,{
+      player:C.A,
+      rules:job.rules,
+      maxDepth:job.config.maxDepth,
+      budgetMs:Math.min(job.config.budgetMs,350)
+    });
+  } catch(error) {
+    if(signal.aborted || !current(job)) throw abortError();
+    console.warn('AI search used the legal-move fallback:',error);
+    reply=null;
+  }
+  if(!current(job)) throw abortError();
+
+  let move=legalReply(reply,job.board,job.rules);
+  if(!move) {
+    move=C.getLegalMoves(job.board,C.A,job.rules)[0];
+    if(!move) throw new Error('No legal AI reply');
+    reply={...blankStats(),move,bestScore:AI.evaluate(C.applyMove(job.board,move),job.rules),candidates:[]};
+  }
+  reply.move=move;
+  reply.localFallback=true;
+
+  let coach=null;
+  try {
+    coach=AI.analyzeHuman(job.before,job.humanMove,{
+      rules:job.rules,
+      maxDepth:Math.min(2,job.config.coachDepth),
+      budgetMs:60
+    });
+  } catch(error) {
+    console.warn('Move coach analysis skipped:',error);
+  }
+  if(!current(job)) throw abortError();
+  return {reply,coach};
+}
+
+function newGame() {
+  cancelPending();
+  const rules='standard',board=C.initialBoard();
+  state={board,rules,phase:'human',legal:C.getLegalMoves(board,C.H,rules),prefix:[],animBoard:null,flight:null,
+    highlight:null,lastMove:[],history:[],undoStack:[],coach:null,aiStats:blankStats(),
+    aiExplain:'The AI has not moved yet.',quietTurns:0,repetitions:new Map([[C.positionKey(board,C.H),1]])};
+  $('fatal').textContent='';$('fatal').classList.remove('show');
+  humanStatus(); renderAll();
+}
+function snapshot() {
+  return {board:Array.from(state.board),history:copy(state.history),coach:copy(state.coach),
+    aiStats:copy(state.aiStats),aiExplain:state.aiExplain,lastMove:state.lastMove.slice(),
+    quietTurns:state.quietTurns,repetitions:Array.from(state.repetitions)};
+}
+function undo() {
+  if(!state.undoStack.length&&state.prefix.length===0) return;
+  cancelPending();
+  if(state.phase==='human'&&state.prefix.length>1) {
+    // During a capture chain no turn has committed yet: Undo cancels that preview.
+    state.prefix=[];humanStatus();renderAll();return;
+  }
+  const previous=state.undoStack.pop();
+  if(previous) {
+    state.board=new Int8Array(previous.board);state.history=copy(previous.history);state.coach=copy(previous.coach);
+    state.aiStats=copy(previous.aiStats);state.aiExplain=previous.aiExplain;state.lastMove=previous.lastMove.slice();
+    state.quietTurns=previous.quietTurns;state.repetitions=new Map(previous.repetitions);
+  }
+  state.phase='human';state.prefix=[];state.animBoard=null;state.flight=null;state.highlight=null;
+  state.legal=C.getLegalMoves(state.board,C.H,state.rules);
+  $('fatal').textContent='';$('fatal').classList.remove('show');
+  humanStatus('Turn undone. ');renderAll();
+}
+function setStatus(title,text,mode='human') {
+  $('statusTitle').textContent=title;$('statusText').textContent=text;
+  $('status').className='status'+(mode==='human'?'':' '+mode);
+}
+function humanStatus(prefix='') {
+  const mustCapture=state.legal.some(m=>m.captures.length);
+  setStatus('Your turn',prefix+(mustCapture?'Capture is required. Select a highlighted red piece.':'Select a red piece, then a highlighted destination.'));
+}
+function displayBoard() {return state.animBoard||(state.phase==='human'&&state.prefix.length>1?C.applyPrefix(state.board,state.prefix):state.board);}
+function nextTargets() {
+  const result=new Map();
+  if(state.phase!=='human'||!state.prefix.length) return result;
+  for(const m of state.legal) if(C.pathStarts(m.path,state.prefix)&&m.path.length>state.prefix.length)
+    result.set(m.path[state.prefix.length],m);
+  return result;
+}
+function humanClick(i) {
+  if(state.phase!=='human') return;
+  const starts=new Set(state.legal.map(m=>m.path[0]));
+  // Check landing squares first: a king's legal capture chain may return to its origin.
+  if(nextTargets().has(i)) {
+    state.prefix.push(i);
+    const move=state.legal.find(m=>m.path.length===state.prefix.length&&C.pathStarts(m.path,state.prefix));
+    if(move) completeHuman(move);
+    else {setStatus('Continue capture · same turn','The same piece must continue the forced capture chain. This is still your one turn. Undo cancels the preview.');renderAll();}
+    return;
+  }
+  if(state.prefix.length>1) return;
+  if(starts.has(i)) {
+    state.prefix=state.prefix.length&&state.prefix[0]===i?[]:[i];
+    if(state.prefix.length) setStatus('Your turn',state.legal.some(m=>m.captures.length)?'Choose a highlighted capture square.':'Choose a highlighted destination.');
+    else humanStatus();
+    renderAll();
+  }
+}
+function recordMove(move,player) {
+  const before=state.board,p=before[move.path[0]];
+  state.quietTurns=move.captures.length||!C.king(p)?0:state.quietTurns+1;
+  state.board=C.applyMove(before,move);state.lastMove=move.path.slice();
+  const entry={n:Math.floor(state.history.length/2)+1,player:player===C.H?'human':'ai',notation:C.notation(move),
+    captures:move.captures.length,score:null,grade:player===C.H?'Analyzing…':''};
+  state.history.push(entry);
+  const key=C.positionKey(state.board,-player);
+  state.repetitions.set(key,(state.repetitions.get(key)||0)+1);
+  return entry;
+}
+function checkGameEnd(nextPlayer) {
+  if(!C.getLegalMoves(state.board,nextPlayer,state.rules).length) {
+    finishGame(nextPlayer===C.A?'You win!':'AI wins!',nextPlayer===C.A?'The AI has no pieces or legal moves.':'You have no pieces or legal moves.');return true;
+  }
+  if((state.repetitions.get(C.positionKey(state.board,nextPlayer))||0)>=3) {
+    finishGame('Draw','The same position with the same player to move occurred three times.');return true;
+  }
+  if(state.quietTurns>=80) {finishGame('Draw','80 consecutive turns without a capture or a man moving.');return true;}
+  return false;
+}
+function finishGame(title,detail) {
+  cancelPending();state.phase='gameover';state.prefix=[];state.animBoard=null;state.flight=null;state.highlight=null;
+  setStatus(title,detail,'gameover');renderAll();
+}
+function completeHuman(move) {
+  if(state.phase!=='human') return;
+  const legal=state.legal.find(m=>C.moveKey(m)===C.moveKey(move));if(!legal)return;
+  const before=new Int8Array(state.board);
+  state.undoStack.push(snapshot());
+  // Ownership changes synchronously before any asynchronous operation or rendering.
+  state.phase='ai-thinking';state.prefix=[];state.coach=null;
+  const entry=recordMove(legal,C.H);
+  if(checkGameEnd(C.A)) {entry.grade='Game ended';renderHistory();return;}
+  const job={epoch,controller:new AbortController(),committed:false,board:new Int8Array(state.board),before,
+    humanMove:copy(legal),entry,rules:state.rules,config:config(),pace:pacing(),started:performance.now()};
+  activeJob=job;
+  setStatus('AI is thinking','Exactly one AI turn is being prepared. A forced multi-jump chain still counts as that same turn.','ai');renderAll();
+  runAITurn(job).catch(error=>{
+    if(error.name==='AbortError'||!current(job))return;
+    cancelPending();state.phase='error';state.animBoard=null;state.flight=null;state.highlight=null;
+    $('fatal').textContent='This turn was stopped safely. Use Undo turn or New game to continue.';$('fatal').classList.add('show');
+    setStatus('Turn stopped','Undo turn or start a new game.','gameover');renderAll();console.error(error);
+  });
+}
+async function runAITurn(job) {
+  const result=await computeTurn(job);
+  if(!current(job))return;
+  await waitFor(Math.max(0,job.pace.delay-(performance.now()-job.started)),job.controller.signal);
+  if(!current(job))return;
+  const move=legalReply(result.reply,job.board,job.rules);
+  if(!move)throw new Error('Illegal reply');
+  state.aiStats=result.reply;
+  state.aiExplain=explainAIMove(job.board,move,result.reply);
+  if(result.coach&&typeof result.coach.grade==='string') {
+    state.coach={...result.coach,move:job.entry.notation};
+    job.entry.score=result.coach.score;job.entry.grade=result.coach.grade;
+  } else job.entry.grade='Not rated';
+  state.phase='ai-moving';state.highlight=move.path[0];
+  setStatus('AI move',C.notation(move)+' · Watch the highlighted black piece.','ai');renderAll();
+  await waitFor(300,job.controller.signal);
+  const total=move.path.length-1;
+  for(let k=1;k<move.path.length;k++) {
+    if(!current(job))return;
+    const from=move.path[k-1],to=move.path[k];
+    state.animBoard=C.applyPrefix(job.board,move.path.slice(0,k));state.highlight=null;
+    state.flight={from,to,piece:state.animBoard[from],duration:job.pace.slide};
+    if(total>1) setStatus('AI chain · jump '+k+' / '+total,'Forced continuation with the same black piece · still one AI turn.','ai');
+    renderAll();
+    await waitFor(job.pace.slide,job.controller.signal);
+    if(!current(job))return;
+    state.animBoard=C.applyPrefix(job.board,move.path.slice(0,k+1));state.flight=null;
+    renderAll();
+    await waitFor(job.pace.hold,job.controller.signal);
+  }
+  if(!current(job))return;
+  // The sole AI commit site. Neither worker callbacks nor fallbacks edit the board.
+  job.committed=true;
+  recordMove(move,C.A);
+  activeJob=null;job.controller.abort();
+  state.animBoard=null;state.flight=null;state.highlight=null;
+  if(checkGameEnd(C.H))return;
+  state.phase='human';state.legal=C.getLegalMoves(state.board,C.H,state.rules);
+  humanStatus();renderAll();
+}
+function explainAIMove(board,m,res) {
+  let action=m.captures.length>1?'completes a '+m.captures.length+'-jump capture chain':m.captures.length?'takes one mandatory capture':'makes one diagonal move';
+  const to=m.path[m.path.length-1];
+  if(C.promote(board[m.path[0]],Math.floor(to/8))!==board[m.path[0]]) action+=' and promotes to king';
+  return 'The AI '+action+'. '+(res.depth!==null?'Completed search depth: '+res.depth+'. ':'')+'Positive evaluation favors the AI.';
+}
+function pieceElement(p) {
+  const el=document.createElement('span');el.className='piece '+(p>0?'human':'ai')+(C.king(p)?' king':'');
+  el.setAttribute('aria-hidden','true');return el;
+}
+function renderBoard() {
+  const b=displayBoard(),targets=nextTargets();
+  const starts=state.phase==='human'?new Set(state.legal.map(m=>m.path[0])):new Set();
+  boardEl.innerHTML='';boardEl.dataset.phase=state.phase;boardEl.setAttribute('aria-busy',String(isAI()));
+  for(let i=0;i<64;i++) {
+    const [r,c]=C.rc(i),p=b[i],btn=document.createElement('button');
+    btn.type='button';btn.className='square '+((r+c)%2?'dark':'light');btn.dataset.i=String(i);
+    let label=C.square(i)+(p?', '+(p>0?'red':'black')+(C.king(p)?' king':' piece'):', empty');
+    if(starts.has(i)&&state.prefix.length===0)btn.classList.add('selectable');
+    if(state.prefix.length&&state.prefix[state.prefix.length-1]===i)btn.classList.add('selected');
+    if(targets.has(i)) {btn.classList.add(targets.get(i).captures.length?'capture-target':'target');label+=', legal destination';}
+    if(state.lastMove.includes(i)&&!state.prefix.length)btn.classList.add('last-move');
+    if(state.highlight===i)btn.classList.add('ai-source');
+    btn.setAttribute('aria-label',label);btn.setAttribute('aria-pressed',String(state.prefix[state.prefix.length-1]===i));
+    if(p&&(!state.flight||state.flight.from!==i))btn.appendChild(pieceElement(p));
+    if(c===0) {const s=document.createElement('span');s.className='rank';s.textContent=String(8-r);btn.appendChild(s);}
+    if(r===7) {const s=document.createElement('span');s.className='file';s.textContent=String.fromCharCode(97+c);btn.appendChild(s);}
+    btn.disabled=state.phase!=='human'||(r+c)%2===0;
+    btn.addEventListener('click',()=>humanClick(i));boardEl.appendChild(btn);
+  }
+  if(state.flight) {
+    const f=state.flight,[r,c]=C.rc(f.from),[nr,nc]=C.rc(f.to),el=document.createElement('div');
+    el.className='mover';el.setAttribute('aria-hidden','true');el.style.left=c*12.5+'%';el.style.top=r*12.5+'%';
+    el.style.setProperty('--dx',(nc-c)*100+'%');el.style.setProperty('--dy',(nr-r)*100+'%');el.style.setProperty('--duration',f.duration+'ms');
+    el.appendChild(pieceElement(f.piece));boardEl.appendChild(el);
+  }
+}
+function renderPosition() {
+  const b=displayBoard(),h=C.count(b,C.H),a=C.count(b,C.A),ev=AI.evaluate(state.board,state.rules);
+  $('humanPieces').textContent=h.total+(h.kings?' · '+h.kings+' kings':'');
+  $('aiPieces').textContent=a.total+(a.kings?' · '+a.kings+' kings':'');
+  $('evalScore').textContent=(ev>=0?'+':'')+ev;
+  $('evalHuman').style.width=(50-Math.max(-700,Math.min(700,ev))/28)+'%';
+}
+function renderCoach() {
+  const c=state.coach;$('coachEmpty').style.display=c?'none':'block';$('coachBody').style.display=c?'block':'none';
+  if(!c) {$('coachEmpty').textContent=isAI()?'Your move is being analyzed.':'Make a move to see the coach’s comparison.';return;}
+  $('grade').className='grade '+c.cls;$('grade').textContent=c.grade;$('moveScore').textContent=c.score===null?'—':c.score;
+  $('lastHumanMove').textContent=c.move;$('coachExplain').textContent=c.explain;
+  $('bestHumanMove').textContent=c.bestMove;$('evalLoss').textContent=c.loss===null?'—':Math.round(c.loss)+' pts';$('coachDepth').textContent=c.depth;
+}
+function renderAIStats() {
+  const s=state.aiStats;
+  for(const [id,key] of [['aiDepth','depth'],['aiNodes','nodes'],['aiPrunes','prunes'],['aiCache','cache']])
+    $(id).textContent=typeof s[key]==='number'?formatNum(s[key]):'—';
+  $('aiTime').textContent=typeof s.elapsed==='number'?Math.round(s.elapsed)+' ms':'—';
+  $('aiBest').textContent=typeof s.bestScore==='number'?Math.round(s.bestScore):'—';$('aiExplain').textContent=state.aiExplain;
+  const box=$('candidates');box.innerHTML='';
+  if(!s.candidates||!s.candidates.length)box.textContent='—';
+  else for(const c of s.candidates) {
+    const row=document.createElement('div'),name=document.createElement('span'),score=document.createElement('span');
+    row.className='candidate';name.textContent=c.notation;score.textContent=String(Math.round(c.score));row.appendChild(name);row.appendChild(score);box.appendChild(row);
+  }
+}
+function renderHistory() {
+  const box=$('history');box.innerHTML='';
+  if(!state.history.length){box.textContent='No moves yet.';return;}
+  for(let k=0;k<state.history.length;k+=2) {
+    const row=document.createElement('div'),n=document.createElement('div');row.className='move-row';n.className='move-num';n.textContent=state.history[k].n+'.';row.appendChild(n);
+    for(let offset=0;offset<2;offset++) {
+      const h=state.history[k+offset],cell=document.createElement('div');cell.className='move-cell';
+      cell.dataset.player=offset===0?'human':'ai';cell.textContent=h?h.notation:state.phase==='gameover'?'—':'…';
+      if(h&&h.player==='human') {
+        const badge=document.createElement('span');badge.className=h.score!==null?'badge-score':'muted';
+        badge.textContent=h.score!==null?' '+h.score:' '+h.grade;cell.appendChild(badge);
+      }
+      row.appendChild(cell);
+    }
+    box.appendChild(row);
+  }
+  box.scrollTop=box.scrollHeight;
+}
+function renderAll() {
+  renderBoard();renderPosition();renderCoach();renderAIStats();renderHistory();
+  $('undoBtn').disabled=state.undoStack.length===0&&state.prefix.length===0;
+  $('difficulty').disabled=isAI();$('pace').disabled=isAI();$('rules').disabled=true;
+  $('thinking').classList.toggle('show',state.phase==='ai-thinking');
+  $('activeRules').textContent='American / English checkers';
+  $('ruleNote').textContent='Captures are mandatory. A forced multi-jump chain is completed by the same piece and counts as one turn.';
+  $('rulesHelp').textContent='If another capture is available after a jump, the same piece must continue. Each jump is animated separately so you can see it, but the chain is recorded as one move and one turn. Promotion ends that capture turn.';
+}
+function formatNum(n) {return n>=1000000?(n/1000000).toFixed(1)+'m':n>=1000?(n/1000).toFixed(1)+'k':String(n);}
+$('newBtn').addEventListener('click',newGame);
+$('undoBtn').addEventListener('click',undo);
+$('difficulty').addEventListener('change',()=>{if(isAI())return;state.aiStats=blankStats();state.aiExplain='Difficulty will apply to the next AI move.';renderAIStats();});
+
+// Front screen / help navigation. These handlers never alter board state.
+uiBind('playBtn','click',uiPlayGame);
+uiBind('rulesPlayBtn','click',uiPlayGame);
+uiBind('aiPlayBtn','click',uiPlayGame);
+uiBind('openRulesBtn','click',()=>uiShowProject('rules'));
+uiBind('aiRulesBtn','click',()=>uiShowProject('rules'));
+uiBind('openAiBtn','click',()=>uiShowProject('ai'));
+uiBind('rulesAiBtn','click',()=>uiShowProject('ai'));
+uiBind('rulesBackBtn','click',()=>uiShowProject('home'));
+uiBind('aiBackBtn','click',()=>uiShowProject('home'));
+uiBind('gameHomeBtn','click',()=>uiShowProject('home'));
+uiBind('gameRulesBtn','click',uiOpenRulesModal);
+uiBind('rulesCardBtn','click',uiOpenRulesModal);
+uiBind('aiCardBtn','click',()=>uiShowProject('ai'));
+uiBind('closeRulesModal','click',uiCloseRulesModal);
+uiBind('modalContinueBtn','click',uiCloseRulesModal);
+uiBind('modalProjectRulesBtn','click',()=>uiShowProject('rules'));
+
+// BOOT: regression tests attach a read/fixture seam here in memory only.
+newGame();
+
+} catch(err) {
+ const f=document.getElementById('fatal');
+ if(f){f.textContent='The game could not start. Open index.html in Chrome, Edge or Firefox. Details: '+String(err&&err.message||err);f.classList.add('show');}
+ console.error(err);
+}
+})();
+</script>
+</body>
+</html>

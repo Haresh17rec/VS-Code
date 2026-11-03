@@ -1,0 +1,53 @@
+PASS Self-contained JavaScript parses; no external script/style dependencies
+PASS Initial position: 12 pieces each, seven legal opening moves, dark squares only
+PASS Default rules are authentic capture-chain checkers with mandatory continuation
+PASS A completed multi-jump is represented as one legal turn
+PASS Promotion ends a jump turn; men cannot move/capture backwards; kings can
+PASS King capture chains can return to their origin without losing the piece
+PASS 300 seeded games: movement, capture, promotion and piece-count invariants
+PASS Alpha-beta choices and scores match independent exhaustive minimax
+PASS Deadline fallback and coach grades are finite and legal
+PASS Serialized worker code runs in an isolated JavaScript context
+PASS Game boots with visible 64-square board and authentic standard rules locked on
+PASS AI waits at least 1.5 seconds, animates once, then yields; no later repeat
+PASS Slow pace waits at least 2.5 seconds before any AI movement
+PASS Reproduced double-jump position completes the forced chain as exactly one AI turn
+PASS AI capture chain is animated jump by jump but commits once
+PASS Rapid repeated human clicks cannot queue another AI turn
+PASS Worker fault handling: normal produces one legal reply
+PASS Worker fault handling: duplicate produces one legal reply
+PASS Worker fault handling: constructor-error produces one legal reply
+PASS Worker fault handling: post-error produces one legal reply
+PASS Worker fault handling: error produces one legal reply
+PASS Worker fault handling: messageerror produces one legal reply
+PASS Worker fault handling: silent produces one legal reply
+PASS Worker fault handling: wrong-id produces one legal reply
+PASS Worker fault handling: illegal produces one legal reply
+PASS Worker fault handling: malformed produces one legal reply
+PASS No Worker API: the offline fallback still plays once
+PASS Late worker result after timeout cannot duplicate the fallback reply
+PASS New Game at 0 ms cancels pending AI work and animation
+PASS Undo at 0 ms restores both turns and cancels AI work
+PASS New Game at 100 ms cancels pending AI work and animation
+PASS Undo at 100 ms restores both turns and cancels AI work
+PASS New Game at 1500 ms cancels pending AI work and animation
+PASS Undo at 1500 ms restores both turns and cancels AI work
+PASS New Game at 1800 ms cancels pending AI work and animation
+PASS Undo at 1800 ms restores both turns and cancels AI work
+PASS New Game at 2200 ms cancels pending AI work and animation
+PASS Undo at 2200 ms restores both turns and cancels AI work
+PASS New Game at 2450 ms cancels pending AI work and animation
+PASS Undo at 2450 ms restores both turns and cancels AI work
+PASS Restart during fallback wait cannot apply an old board to the new game
+PASS Undo completed round restores board, move history and draw counters
+PASS Standard human loop capture commits once and allows Undo after game over
+PASS Human capture chain cannot switch pieces; Undo cancels the uncommitted chain
+PASS Game-over uses next player mobility; AI win can be undone
+PASS Only the player whose turn is next is checked for blocked movement
+PASS Stale worker callback cannot update a restarted game
+PASS Threefold repetition and 80 quiet turns end the game as draws
+PASS End-to-end simulated games retain strict human/AI alternation
+
+ALL 49 TESTS PASSED · 20666 stress plies · 5715 captures · 956 promotions
+
+Generated: 2026-09-30T13:00:11Z

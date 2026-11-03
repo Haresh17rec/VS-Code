@@ -1,0 +1,210 @@
+{
+  "date": "2026-10-07T13:35:48.068Z",
+  "tests": 49,
+  "passed": 49,
+  "stressGames": 300,
+  "stressPlies": 20666,
+  "captures": 5715,
+  "promotions": 956,
+  "searchComparisonPositions": 6,
+  "environment": "Node v22.16.0; deterministic DOM/timer/worker harness; actual rules and app JavaScript",
+  "browserRendering": "Not performed: cloud browser policy blocks file:// previews.",
+  "reports": [
+    {
+      "name": "Self-contained JavaScript parses; no external script/style dependencies",
+      "ms": 1
+    },
+    {
+      "name": "Initial position: 12 pieces each, seven legal opening moves, dark squares only",
+      "ms": 1
+    },
+    {
+      "name": "Default rules are authentic capture-chain checkers with mandatory continuation",
+      "ms": 1
+    },
+    {
+      "name": "A completed multi-jump is represented as one legal turn",
+      "ms": 0
+    },
+    {
+      "name": "Promotion ends a jump turn; men cannot move/capture backwards; kings can",
+      "ms": 0
+    },
+    {
+      "name": "King capture chains can return to their origin without losing the piece",
+      "ms": 0
+    },
+    {
+      "name": "300 seeded games: movement, capture, promotion and piece-count invariants",
+      "ms": 1765
+    },
+    {
+      "name": "Alpha-beta choices and scores match independent exhaustive minimax",
+      "ms": 1926
+    },
+    {
+      "name": "Deadline fallback and coach grades are finite and legal",
+      "ms": 26
+    },
+    {
+      "name": "Serialized worker code runs in an isolated JavaScript context",
+      "ms": 21
+    },
+    {
+      "name": "Game boots with visible 64-square board and authentic standard rules locked on",
+      "ms": 6
+    },
+    {
+      "name": "AI waits at least 1.5 seconds, animates once, then yields; no later repeat",
+      "ms": 28
+    },
+    {
+      "name": "Slow pace waits at least 2.5 seconds before any AI movement",
+      "ms": 25
+    },
+    {
+      "name": "Reproduced double-jump position completes the forced chain as exactly one AI turn",
+      "ms": 8
+    },
+    {
+      "name": "AI capture chain is animated jump by jump but commits once",
+      "ms": 8
+    },
+    {
+      "name": "Rapid repeated human clicks cannot queue another AI turn",
+      "ms": 25
+    },
+    {
+      "name": "Worker fault handling: normal produces one legal reply",
+      "ms": 36
+    },
+    {
+      "name": "Worker fault handling: duplicate produces one legal reply",
+      "ms": 37
+    },
+    {
+      "name": "Worker fault handling: constructor-error produces one legal reply",
+      "ms": 47
+    },
+    {
+      "name": "Worker fault handling: post-error produces one legal reply",
+      "ms": 55
+    },
+    {
+      "name": "Worker fault handling: error produces one legal reply",
+      "ms": 46
+    },
+    {
+      "name": "Worker fault handling: messageerror produces one legal reply",
+      "ms": 43
+    },
+    {
+      "name": "Worker fault handling: silent produces one legal reply",
+      "ms": 47
+    },
+    {
+      "name": "Worker fault handling: wrong-id produces one legal reply",
+      "ms": 64
+    },
+    {
+      "name": "Worker fault handling: illegal produces one legal reply",
+      "ms": 63
+    },
+    {
+      "name": "Worker fault handling: malformed produces one legal reply",
+      "ms": 65
+    },
+    {
+      "name": "No Worker API: the offline fallback still plays once",
+      "ms": 59
+    },
+    {
+      "name": "Late worker result after timeout cannot duplicate the fallback reply",
+      "ms": 69
+    },
+    {
+      "name": "New Game at 0 ms cancels pending AI work and animation",
+      "ms": 30
+    },
+    {
+      "name": "Undo at 0 ms restores both turns and cancels AI work",
+      "ms": 25
+    },
+    {
+      "name": "New Game at 100 ms cancels pending AI work and animation",
+      "ms": 24
+    },
+    {
+      "name": "Undo at 100 ms restores both turns and cancels AI work",
+      "ms": 26
+    },
+    {
+      "name": "New Game at 1500 ms cancels pending AI work and animation",
+      "ms": 26
+    },
+    {
+      "name": "Undo at 1500 ms restores both turns and cancels AI work",
+      "ms": 27
+    },
+    {
+      "name": "New Game at 1800 ms cancels pending AI work and animation",
+      "ms": 29
+    },
+    {
+      "name": "Undo at 1800 ms restores both turns and cancels AI work",
+      "ms": 23
+    },
+    {
+      "name": "New Game at 2200 ms cancels pending AI work and animation",
+      "ms": 23
+    },
+    {
+      "name": "Undo at 2200 ms restores both turns and cancels AI work",
+      "ms": 32
+    },
+    {
+      "name": "New Game at 2450 ms cancels pending AI work and animation",
+      "ms": 32
+    },
+    {
+      "name": "Undo at 2450 ms restores both turns and cancels AI work",
+      "ms": 32
+    },
+    {
+      "name": "Restart during fallback wait cannot apply an old board to the new game",
+      "ms": 45
+    },
+    {
+      "name": "Undo completed round restores board, move history and draw counters",
+      "ms": 29
+    },
+    {
+      "name": "Standard human loop capture commits once and allows Undo after game over",
+      "ms": 5
+    },
+    {
+      "name": "Human capture chain cannot switch pieces; Undo cancels the uncommitted chain",
+      "ms": 4
+    },
+    {
+      "name": "Game-over uses next player mobility; AI win can be undone",
+      "ms": 5
+    },
+    {
+      "name": "Only the player whose turn is next is checked for blocked movement",
+      "ms": 3
+    },
+    {
+      "name": "Stale worker callback cannot update a restarted game",
+      "ms": 3
+    },
+    {
+      "name": "Threefold repetition and 80 quiet turns end the game as draws",
+      "ms": 4
+    },
+    {
+      "name": "End-to-end simulated games retain strict human/AI alternation",
+      "ms": 2533
+    }
+  ]
+}

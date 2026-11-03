@@ -1,0 +1,15 @@
+STRATEGIC CHECKERS AI — VS CODE EDITION
+
+1. Extract this ZIP completely.
+2. Open the extracted folder in VS Code (File > Open Folder).
+3. Open index.html.
+4. Double-click index.html in File Explorer, OR use the Live Server extension and click Go Live.
+5. Click PLAY THE GAME.
+
+No npm install, Node.js, React, Python, or internet connection is required to play.
+
+The project currently shows these developers:
+Auxin Sam (241901012)
+Haresh (241901031)
+
+If a different friend name is required, search index.html for "Auxin Sam" / "Haresh" and replace with the correct spelling.

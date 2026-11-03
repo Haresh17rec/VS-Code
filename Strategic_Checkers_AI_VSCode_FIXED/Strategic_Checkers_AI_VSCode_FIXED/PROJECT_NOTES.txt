@@ -1,0 +1,45 @@
+PROJECT: STRATEGIC CHECKERS AI — FINAL
+
+1. PURPOSE
+A standalone browser-based AI checkers project demonstrating adversarial search with Minimax, alpha-beta pruning, heuristic evaluation, iterative deepening, move ordering, and a transposition cache.
+
+The final review UI now opens on a project home screen before the board. It includes developer credits, a Play button, a full Rules & How to Play page, a How the AI Works page, and in-game rules/AI explanation panels. These UI additions are navigation-only and do not modify the game-state controller.
+
+2. AUTHENTIC RULE ENGINE
+The production UI is locked to American / English checkers rules:
+- mandatory capture;
+- forced continuation by the same piece during a multi-jump;
+- a complete capture chain is one turn;
+- forward-only men;
+- two-direction kings;
+- non-flying kings;
+- promotion ends a capture chain.
+
+The rules engine represents one full turn as one Move object:
+    { path:[start,...landings], captures:[capturedSquares...] }
+Therefore a multi-jump is never represented as multiple turns.
+
+3. TURN CONTROLLER / DOUBLE-MOVE PREVENTION
+Human move -> AI thinking -> minimum visible pause -> optional source highlight -> jump/step animation -> one AI board commit -> human turn.
+
+The active AI job has a unique generation and AbortController. Every async continuation checks ownership before proceeding. Worker replies settle only once. The fallback starts only after the worker path has definitively failed. Only runAITurn() owns the AI board commit point.
+
+This prevents:
+- duplicate worker replies;
+- late worker replies;
+- timeout/fallback races;
+- rapid-click queueing;
+- stale callbacks after New Game;
+- stale callbacks after Undo.
+
+4. MULTI-JUMP ANIMATION
+For a forced chain such as b6 x d4 x f2, the UI deliberately animates b6->d4 and d4->f2 separately so the capture path is visible. The board is committed only after the entire chain finishes. Move history receives one entry with two captures.
+
+5. HUMAN CHAIN INPUT
+The human must continue with the same selected piece when further capture is forced. Other pieces cannot be selected mid-chain. Undo during an unfinished chain cancels only that preview.
+
+6. AI SEARCH
+Minimax alternates maximizing black (AI) and minimizing red (human). Alpha-beta pruning reduces branches. Iterative deepening retains the deepest completed result before the time budget. Root moves use comparable search windows for Move Coach scoring.
+
+7. VALIDATION
+49 deterministic regression tests pass. Important checks include authentic multi-jump generation, promotion termination, king loop captures, random-game invariants, independent exhaustive-minimax comparison, Worker fault injection, cancellation at multiple animation times, reproduced double-jump behavior, strict alternation, draws, and undo.
